@@ -2,9 +2,15 @@ import logging
 import openai
 from typing import List
 
+# load .ENV file
+from dotenv import load_dotenv
+load_dotenv()
+
+# Set up logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# Get Embedding Function
 def get_embedding(text: str, model: str = "text-embedding-3-small", dimensions: int = 256) -> List[float]:
     text = text.replace("\n", " ")
     try:
