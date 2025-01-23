@@ -253,70 +253,47 @@ class CustomMongoClient(MongoClient):
         except Exception as e:  
             logger.error(f"Error inserting documents: {e}")  
   
-    def vector_search(  
-        self,  
-        query: str,  
-        limit: int = 5,  
-        database_name: str = "",  
-        collection_name: str = "",  
-        index_name: str = "",  
-        filters: Optional[Dict[str, Any]] = None,  
-    ) -> List[Dict]:  
-        """  
-        Performs a vector-based search using the specified search index.  
-  
-        :param query: The query string to search for.  
-        :param limit: The maximum number of results to return.  
-        :param database_name: Name of the database.  
-        :param collection_name: Name of the collection.  
-        :param index_name: Name of the search index to use.  
-        :param filters: Additional filters to apply to the search.  
-        :return: A list of documents matching the search.  
-        """  
-        query_embedding = self.get_embedding(query)  
-        if not self.index_exists(database_name, collection_name, index_name):  
-            logger.error(f"Index '{index_name}' does not exist.")  
-            return []  
-        if query_embedding is None:  
-            logger.error(f"Failed to generate embedding for query: {query}")  
-            return []  
-  
-        try:  
-            collection = self[database_name][collection_name]  
-            knn_query = {  
-                "vector": query_embedding,  
-                "path": "embedding",  
-                "k": limit,  
-            }  
-  
-            # If filters are provided, include them in the query  
-            if filters:  
-                knn_query["filter"] = filters  
-  
-            pipeline = [  
-                {  
-                    "$search": {  
-                        "knnBeta": knn_query  
-                    }  
-                },  
-                {  
-                    "$limit": limit  
-                },  
-                {  
-                    "$project": {  
-                        "_id": 0,  
-                        "score": {"$meta": "searchScore"},  
-                        "document": "$$ROOT"  
-                    }  
-                }  
-            ]  
-            results = list(collection.aggregate(pipeline))  
-            logger.info(f"Vector search completed. Found {len(results)} documents.")  
-            # Return the documents without embeddings  
-            return [res['document'] for res in results]  
-        except Exception as e:  
-            logger.error(f"Error during vector search: {e}")  
-            return []  
+    def vector_search(
+        self,
+        query: str,
+        limit: int = 5,
+        database_name: str = "",
+        collection_name: str = "",
+        index_name: str = "",
+        filters: Optional[Dict[str, Any]] = None,
+    ) -> List[Dict]:
+        """
+        Performs a vector-based search using the specified search index.
+        """
+        query_embedding = get_embedding(query)
+        if not self.index_exists(database_name, collection_name, index_name):
+            logger.error(f"Index '{index_name}' does not exist.")
+            return []
+        if query_embedding is None:
+            logger.error(f"Failed to generate embedding for query: {query}")
+            return []
+
+        try:
+            collection = self[database_name][collection_name]
+            pipeline = [
+                {
+                    "$vectorSearch": {
+                        "index": index_name,
+                        "limit": limit,
+                        "numCandidates": limit,
+                        "queryVector": query_embedding,
+                        "path": "embedding",
+                    }
+                },
+                {"$set": {"score": {"$meta": "vectorSearchScore"}}},
+                {"$project": {"embedding": 0}},
+            ]
+            results = list(collection.aggregate(pipeline))
+            logger.info(f"Vector search completed. Found {len(results)} documents.")
+            return results
+        except Exception as e:
+            logger.error(f"Error during vector search: {e}")
+            return []
   
     def keyword_search(  
         self,  
@@ -347,78 +324,49 @@ class CustomMongoClient(MongoClient):
             logger.error(f"Error during keyword search: {e}")  
             return []  
   
-    def hybrid_search(  
-        self,  
-        query: str,  
-        keyword: str,  
-        limit: int = 5,  
-        database_name: str = "",  
-        collection_name: str = "",  
-        index_name: str = "",  
-        distance_metric: str = "cosine",  
-    ) -> List[Dict]:  
-        """  
-        Performs a hybrid search combining vector-based search and keyword filtering.  
-        Returns documents that are semantically relevant and match the keyword.  
-  
-        :param query: The query string for vector search.  
-        :param keyword: The keyword to filter results.  
-        :param limit: The maximum number of results to return.  
-        :param database_name: Name of the database.  
-        :param collection_name: Name of the collection.  
-        :param index_name: Name of the search index to use.  
-        :param distance_metric: The distance metric used in the index.  
-        :return: A list of documents matching the hybrid search.  
-        """  
-        query_embedding = self.get_embedding(query)  
-        if not self.index_exists(database_name, collection_name, index_name):  
-            logger.error(f"Index '{index_name}' does not exist.")  
-            return []  
-        if query_embedding is None:  
-            logger.error(f"Failed to generate embedding for query: {query}")  
-            return []  
-  
-        try:  
-            collection = self[database_name][collection_name]  
-            knn_query = {  
-                "vector": query_embedding,  
-                "path": "embedding",  
-                "k": limit * 2,  # Fetch more to account for keyword filtering  
-            }  
-  
-            pipeline = [  
-                {  
-                    "$search": {  
-                        "compound": {  
-                            "must": [  
-                                {  
-                                    "knnBeta": knn_query  
-                                },  
-                                {  
-                                    "text": {  
-                                        "query": keyword,  
-                                        "path": "content"  
-                                    }  
-                                }  
-                            ]  
-                        }  
-                    }  
-                },  
-                {  
-                    "$limit": limit  
-                },  
-                {  
-                    "$project": {  
-                        "_id": 0,  
-                        "score": {"$meta": "searchScore"},  
-                        "document": "$$ROOT"  
-                    }  
-                }  
-            ]  
-            results = list(collection.aggregate(pipeline))  
-            logger.info(f"Hybrid search completed. Found {len(results)} documents.")  
-            # Return the documents without embeddings  
-            return [res['document'] for res in results]  
-        except Exception as e:  
-            logger.error(f"Error during hybrid search: {e}")  
-            return []  
+    def hybrid_search(
+        self,
+        query: str,
+        keyword: str,
+        limit: int = 5,
+        database_name: str = "",
+        collection_name: str = "",
+        index_name: str = "",
+        distance_metric: str = "cosine",
+    ) -> List[Dict]:
+        """
+        Performs a hybrid search combining vector-based search and keyword filtering.
+        Returns documents that are semantically relevant and match the keyword.
+        """
+        query_embedding = self.get_embedding(query)
+        if not self.index_exists(database_name, collection_name, index_name):
+            logger.error(f"Index '{index_name}' does not exist.")
+            return []
+        if query_embedding is None:
+            logger.error(f"Failed to generate embedding for query: {query}")
+            return []
+
+        try:
+            collection = self[database_name][collection_name]
+            pipeline = [
+                {
+                    "$vectorSearch": {
+                        "index": index_name,
+                        "limit": limit * 2,  # Fetch more to account for filtering
+                        "numCandidates": limit * 2,
+                        "queryVector": query_embedding,
+                        "path": "embedding",
+                    }
+                },
+                {"$set": {"score": {"$meta": "vectorSearchScore"}}},
+                {"$match": {"content": {"$regex": keyword, "$options": "i"}}},
+                {"$sort": {"score": -1}},  # Sort by relevance score
+                {"$limit": limit},
+                {"$project": {"embedding": 0}},
+            ]
+            results = list(collection.aggregate(pipeline))
+            logger.info(f"Hybrid search completed. Found {len(results)} documents.")
+            return results
+        except Exception as e:
+            logger.error(f"Error during hybrid search: {e}")
+            return []
