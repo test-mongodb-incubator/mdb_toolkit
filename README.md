@@ -26,7 +26,7 @@ Configuration is a breeze with support for environment variables and seamless in
 ## Code
 
 ```
-fields_to_embed = ["content"]  # Specify which fields to generate embeddings for
+    fields_to_embed = ["content"]  # Specify which fields to generate embeddings for
 
     client.insert_documents(
         database_name=database_name,
