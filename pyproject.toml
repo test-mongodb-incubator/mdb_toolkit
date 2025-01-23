@@ -1,39 +1,37 @@
-[build-system]  
-requires = ["setuptools>=61.0"]  
-build-backend = "setuptools.build_meta"  
-  
-[project]  
-name = "mdb-toolkit"  # Ensure this name is unique on PyPI  
-version = "0.1.0"  
-description = "Custom MongoDB client with vector search capabilities using OpenAI embeddings"  
-readme = "README.md"  
-readme-content-type = "text/markdown"  
-requires-python = ">=3.7"  
-license = { text = "MIT" }  
-authors = [  
-  { name = "Your Name", email = "oblivio.company@gmail.com" }  
-]  
-classifiers = [  
-  "Programming Language :: Python :: 3",  
-  "Programming Language :: Python :: 3.7",  
-  "Programming Language :: Python :: 3.8",  
-  "Programming Language :: Python :: 3.9",  
-  "Programming Language :: Python :: 3.10",  
-  "License :: OSI Approved :: MIT License",  
-  "Operating System :: OS Independent",  
-]  
-keywords = ["mongodb", "vector search", "embeddings", "pymongo", "custom client"]  
-  
-dependencies = [  
-  "pymongo>=3.11",  
-  "python-dotenv>=0.15.0",  
-  "openai>=0.27.0",  # For OpenAI API integration  
-  # Include any other dependencies if necessary  
-]  
-  
-[project.urls]  
-Homepage = "https://github.com/ranfysvalle02/mdb_toolkit"  
-Bug Tracker = "https://github.com/ranfysvalle02/mdb_toolkit/issues"  
-  
-[tool.setuptools.packages.find]  
-where = ["."]  
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mdb-toolkit"
+version = "0.2.0"
+description = "Custom MongoDB client with vector search capabilities, embeddings management, and more."
+readme = "README.md"
+requires-python = ">=3.7"
+license = { text = "MIT" }
+authors = [
+  { name = "Fabian Valle", email = "oblivio.company@gmail.com" }
+]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.7",
+  "Programming Language :: Python :: 3.8",
+  "Programming Language :: Python :: 3.9",
+  "Programming Language :: Python :: 3.10",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent"
+]
+keywords = ["mongodb", "vector search", "embeddings", "pymongo", "custom client"]
+
+dependencies = [
+  "pymongo>=3.11",
+  "python-dotenv>=0.15.0",
+  "openai>=1.0.0"
+]
+
+[project.urls]
+homepage = "https://github.com/ranfysvalle02/mdb_toolkit"
+issue_tracker = "https://github.com/ranfysvalle02/mdb_toolkit/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
