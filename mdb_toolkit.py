@@ -2,41 +2,26 @@ import logging
 import time  
 from typing import List, Optional, Dict, Any  
   
-from pymongo import *  # Import everything from pymongo  
-from pymongo import MongoClient as RealMongoClient  
-from pymongo.collection import Collection  
-from pymongo.errors import OperationFailure  
-  
 import openai  
+from pymongo import MongoClient  
+from pymongo.collection import Collection  
+from pymongo.operations import SearchIndexModel  
+from pymongo.errors import OperationFailure  
   
 # Configure logging  
 logger = logging.getLogger(__name__)  
 logging.basicConfig(level=logging.INFO)  
   
-  
-def get_embedding(text: str, model: str = "text-embedding-ada-002") -> List[float]:  
+def get_embedding(text: str, model: str = "text-embedding-3-small", dimensions: int = 256) -> List[float]:  
     text = text.replace("\n", " ")  
     try:  
-        response = openai.Embedding.create(input=[text], model=model)  
-        return response['data'][0]['embedding']  
+        response = openai.OpenAI().embeddings.create(input=[text], model=model, dimensions=dimensions)  
+        return response.data[0].embedding  
     except Exception as e:  
         logger.error(f"Error generating embedding: {str(e)}")  
         raise  
   
-  
-class MongoClient(RealMongoClient):  
-    def __init__(self, *args, **kwargs):  
-        super().__init__(*args, **kwargs)  
-  
-    def get_database_names(self):  
-        return self.list_database_names()  
-  
-    def get_collection_names(self, database_name):  
-        database = self[database_name]  
-        return database.list_collection_names()  
-  
-  
-class CustomMongoClient(MongoClient):  
+class PymongoPlus(MongoClient):  
     def __init__(self, *args, **kwargs):  
         super().__init__(*args, **kwargs)  
   
@@ -48,7 +33,7 @@ class CustomMongoClient(MongoClient):
             logger.info(f"Collection '{collection_name}' does not exist. Creating it now.")  
             collection = database[collection_name]  
             collection.insert_one({"_id": 0, "placeholder": True})  
-            collection.delete_one({"_id": 0})  # Remove the placeholder document  
+            collection.delete_one({"_id": 0})  
             logger.info(f"Collection '{collection_name}' created successfully.")  
         else:  
             collection = database[collection_name]  
@@ -73,31 +58,44 @@ class CustomMongoClient(MongoClient):
             logger.info(f"Creating search index '{index_name}' for collection '{collection_name}'.")  
   
             num_dimensions = len(get_embedding("sample text"))  
-            search_index_definition = {  
-                "mappings": {  
-                    "dynamic": False,  
-                    "fields": {  
-                        "embedding": {  
-                            "type": "knnVector",  
-                            "dimensions": num_dimensions,  
+            search_index_model = SearchIndexModel(  
+                definition={  
+                    "fields": [  
+                        {  
+                            "type": "vector",  
+                            "numDimensions": num_dimensions,  
+                            "path": "embedding",  
                             "similarity": distance_metric,  
-                        }  
-                    }  
-                }  
-            }  
+                        },  
+                    ]  
+                },  
+                name=index_name,  
+                type="vectorSearch",  
+            )  
   
             collection = self[database_name][collection_name]  
-            collection.create_search_index(  
-                name=index_name, definition=search_index_definition  
-            )  
+            collection.create_search_index(model=search_index_model)  
             logger.info(f"Search index '{index_name}' created successfully for collection '{collection_name}'.")  
   
         except OperationFailure as e:  
             logger.error(f"Operation failed: {e}")  
-            raise e  
+            raise  
         except Exception as e:  
             logger.error(f"Failed to create search index '{index_name}': {e}")  
-            raise e  
+            raise  
+  
+    def index_exists(self, database_name: str, collection_name: str, index_name: str) -> bool:  
+        try:  
+            collection = self[database_name][collection_name]  
+            indexes = list(collection.list_search_indexes())  
+            exists = any(index["name"] == index_name for index in indexes)  
+            return exists  
+        except OperationFailure as e:  
+            logger.error(f"Operation failure while checking index existence: {e}")  
+            return False  
+        except Exception as e:  
+            logger.error(f"Error checking search index existence for '{index_name}': {e}")  
+            return False  
   
     def search(  
         self,  
@@ -120,16 +118,15 @@ class CustomMongoClient(MongoClient):
             collection = self[database_name][collection_name]  
             pipeline = [  
                 {  
-                    "$search": {  
+                    "$vectorSearch": {  
                         "index": index_name,  
-                        "knnBeta": {  
-                            "vector": query_embedding,  
-                            "path": "embedding",  
-                            "k": limit,  
-                        },  
+                        "limit": limit,  
+                        "numCandidates": limit,  
+                        "queryVector": query_embedding,  
+                        "path": "embedding",  
                     }  
                 },  
-                {"$limit": limit},  
+                {"$set": {"score": {"$meta": "vectorSearchScore"}}},  
                 {"$project": {"embedding": 0}},  
             ]  
             results = list(collection.aggregate(pipeline))  
@@ -150,10 +147,10 @@ class CustomMongoClient(MongoClient):
             collection = self[database_name][collection_name]  
             cursor = collection.find(  
                 {"content": {"$regex": query, "$options": "i"}},  
-                {"_id": 0, "name": 1, "content": 1, "meta_data": 1},  
+                {"_id": 1, "name": 1, "content": 1, "meta_data": 1},  
             ).limit(limit)  
             results = list(cursor)  
-            logger.debug(f"Keyword search completed. Found {len(results)} documents.")  
+            logger.info(f"Keyword search completed. Found {len(results)} documents.")  
             return results  
         except Exception as e:  
             logger.error(f"Error during keyword search: {e}")  
@@ -171,22 +168,8 @@ class CustomMongoClient(MongoClient):
         logger.debug("Performing hybrid search is not yet implemented.")  
         return []  
   
-    def index_exists(self, database_name: str, collection_name: str, index_name: str) -> bool:  
-        try:  
-            collection = self[database_name][collection_name]  
-            indexes = list(collection.list_search_indexes())  
-            exists = any(index["name"] == index_name for index in indexes)  
-            return exists  
-        except OperationFailure as e:  
-            logger.error(f"Operation failure while checking index existence: {e}")  
-            return False  
-        except Exception as e:  
-            logger.error(f"Error checking search index existence for '{index_name}': {e}")  
-            return False  
-  
-  
 if __name__ == "__main__":  
-    client = CustomMongoClient("mongodb://0.0.0.0/?directConnection=true")  
+    client = PymongoPlus("mongodb://0.0.0.0/?directConnection=true")  
   
     database_name = "test_database"  
     collection_name = "test_collection"  
