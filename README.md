@@ -22,6 +22,12 @@ Before diving into code, we’ll need a MongoDB instance to work with. A simple 
 docker run -d -p 27017:27017 --restart unless-stopped mongodb/mongodb-atlas-local
 ```
 
+**OR** 
+
+if you already have a MongoDB Atlas cluster, keep the MongoDB URI handy as you will need it :)
+
+---
+
 ---
 
 Integrating advanced search capabilities into your applications can often be complex and time-consuming. However, our latest MongoDB integration changes the game by **streamlining the process, reducing the amount of code you need to write, and making embedding effortless**. 
@@ -42,55 +48,221 @@ Built on MongoDB’s solid infrastructure, our client ensures reliable performan
 Configuration is a breeze with support for environment variables and seamless integration with OpenAI’s embedding API. Whether you’re deploying locally or scaling up in the cloud, our setup is designed to fit effortlessly into your existing workflow, allowing you to get started quickly without unnecessary hassle.
 
 ---
+
+# mdb_toolkit
+
+**mdb_toolkit** is a custom MongoDB client that integrates seamlessly with OpenAI's embedding models to provide advanced vector-based search capabilities. It enables semantic searches, keyword searches, and hybrid searches within your MongoDB collections.
+
+## Features
+
+- **Vector-Based Search**: Perform semantic searches using OpenAI embeddings.
+- **Keyword Search**: Execute traditional text-based searches with regular expressions.
+- **Hybrid Search**: Combine semantic relevance with keyword filtering for precise results.
+- **Easy Integration**: Simple setup with MongoDB and OpenAI APIs.
+- **Comprehensive Logging**: Detailed logs for monitoring and debugging.
+
+## Installation
+
+Install `mdb_toolkit` using `pip`:
+
+```bash
+pip install mdb-toolkit
+```
+
+*Requires Python 3.7 or higher.*
+
+## Setup
+
+1. **Clone the Repository**
+
+   ```bash
+   git clone git@github.com:ranfysvalle02/mdb_toolkit.git
+   cd mdb_toolkit
+   ```
+
+2. **Install Dependencies**
+
+   ```bash
+   pip install -e .
+   ```
+
+3. **Configure Environment Variables**
+
+   Create a `.env` file in the project root with the following content:
+
+   ```dotenv
+   MONGODB_URI=mongodb://localhost:27017/?directConnection=true
+   OPENAI_API_KEY=your_openai_api_key_here
+   ```
+
+   Replace `your_openai_api_key_here` with your actual OpenAI API key.
+
+## Example Usage
+
+Here's a sample script demonstrating how to use `mdb_toolkit` to create a search index, insert documents, and perform various search operations.
+
+```python
+import logging
+import openai
+from typing import List
+
+# Load .env file
+from dotenv import load_dotenv
+load_dotenv()
+
+# Set up logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
+
+# Get Embedding Function
+def get_embedding(text: str, model: str = "text-embedding-ada-002", dimensions: int = 256) -> List[float]:
+    text = text.replace("\n", " ")
+    try:
+        response = openai.Embedding.create(
+            input=[text],
+            model=model
+        )
+        return response['data'][0]['embedding']
+    except Exception as e:
+        logger.error(f"Error generating embedding: {str(e)}")
+        raise
+
+# Example usage
+from mdb_toolkit import CustomMongoClient
+print("mdb_toolkit package imported successfully")
+
+# Define database and collection names
+database_name = "test_database"
+collection_name = "test_collection"
+index_name = "vs_1"  # Ensure this matches your intended index name
+distance_metric = "cosine"
+
+client = CustomMongoClient(
+    "mongodb://localhost:27017/?directConnection=true&serverSelectionTimeoutMS=2000",
+    get_embedding=get_embedding
+)
+
+# Create the search index
+client._create_search_index(
+    database_name=database_name,
+    collection_name=collection_name,
+    index_name=index_name,
+    distance_metric=distance_metric,
+)
+
+# Wait for the search index to be READY
+logger.info("Waiting for the search index to be READY...")
+index_ready = client.wait_for_index_ready(
+    database_name=database_name,
+    collection_name=collection_name,
+    index_name=index_name,
+    max_attempts=10,
+    wait_seconds=1
+)
+
+if index_ready:
+    logger.info(f"Search index '{index_name}' is now READY and available!")
+    print("Index is ready!")
+else:
+    logger.error("Index creation process exceeded wait limit or failed.")
+    print("Index creation process exceeded wait limit.")
+    exit()
+
+# Insert documents
+documents = [
+    {
+        "name": "Document 1",
+        "content": "OpenAI develops artificial intelligence technologies.",
+        "meta_data": {"category": "AI", "tags": ["openai", "ai", "technology"]},
+    },
+    {
+        "name": "Document 2",
+        "content": "MongoDB is a popular NoSQL database.",
+        "meta_data": {"category": "Database", "tags": ["mongodb", "nosql", "database"]},
+    },
+    {
+        "name": "Document 3",
+        "content": "Python is a versatile programming language.",
+        "meta_data": {"category": "Programming", "tags": ["python", "programming", "language"]},
+    },
+    {
+        "name": "Document 4",
+        "content": "Artificial intelligence and machine learning are transforming industries.",
+        "meta_data": {"category": "AI", "tags": ["ai", "machine learning", "transformation"]},
+    },
+    {
+        "name": "Document 5",
+        "content": "OpenAI's ChatGPT is a language model for generating human-like text.",
+        "meta_data": {"category": "AI", "tags": ["openai", "chatgpt", "language model"]},
+    },
+]
+
+fields_to_embed = ["content"]  # Specify which fields to generate embeddings for
+
+client.insert_documents(
+    database_name=database_name,
+    collection_name=collection_name,
+    documents=documents,
+    fields_to_embed=fields_to_embed,
+)
+
+# Perform searches
+# 1. Vector-Based Search
+vector_query = "Tell me about artificial intelligence advancements."
+logger.info(f"Performing vector-based search with query: '{vector_query}'")
+vector_results = client.vector_search(
+    query=vector_query,
+    limit=3,
+    database_name=database_name,
+    collection_name=collection_name,
+    index_name=index_name
+)
+print("\n--- Vector-Based Search Results ---")
+for doc in vector_results:
+    print(f"Name: {doc.get('name')}\nContent: {doc.get('content')}\nMeta Data: {doc.get('meta_data')}\nScore: {doc.get('score')}\n")
+
+# 2. Keyword Search
+keyword_query = "Python"
+logger.info(f"Performing keyword search with query: '{keyword_query}'")
+keyword_results = client.keyword_search(
+    query=keyword_query,
+    limit=3,
+    database_name=database_name,
+    collection_name=collection_name
+)
+print("\n--- Keyword Search Results ---")
+for doc in keyword_results:
+    print(f"Name: {doc.get('name')}\nContent: {doc.get('content')}\nMeta Data: {doc.get('meta_data')}\n")
+
+# 3. Hybrid Search
+hybrid_vector_query = "Advancements in machine learning."
+hybrid_keyword = "transforming"
+logger.info(f"Performing hybrid search with vector query: '{hybrid_vector_query}' and keyword: '{hybrid_keyword}'")
+hybrid_results = client.hybrid_search(
+    query=hybrid_vector_query,
+    keyword=hybrid_keyword,
+    limit=3,
+    database_name=database_name,
+    collection_name=collection_name,
+    index_name=index_name
+)
+print("\n--- Hybrid Search Results ---")
+for doc in hybrid_results:
+    print(f"Name: {doc.get('name')}\nContent: {doc.get('content')}\nMeta Data: {doc.get('meta_data')}\nScore: {doc.get('score')}\n")
+```
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+## Contributing
+
+Contributions are welcome! Please open an issue or submit a pull request for any enhancements or bug fixes.
+
+## Support
+
+If you encounter any issues or have questions, please open an issue on the [GitHub repository](git@github.com:ranfysvalle02/mdb_toolkit.git).
+
 ---
 
-## Output
-
-```
-INFO:__main__:Found existing index 'vector_search_index_1'.
-INFO:__main__:Search index 'vector_search_index_1' already exists in collection 'test_collection'.
-INFO:__main__:Waiting for the search index to be READY...
-INFO:__main__:Search index 'vector_search_index_1' is READY.
-INFO:__main__:Search index 'vector_search_index_1' is now READY and available!
-Index is ready!
-INFO:__main__:Collection 'test_collection' already has data. Skipping document insertion.
-INFO:__main__:Performing vector-based search with query: 'Tell me about artificial intelligence advancements.'
-INFO:httpx:HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-INFO:__main__:Found existing index 'vector_search_index_1'.
-INFO:__main__:Vector search completed. Found 3 documents.
-
---- Vector-Based Search Results ---
-Name: Document 1
-Content: OpenAI develops artificial intelligence technologies.
-Meta Data: {'category': 'AI', 'tags': ['openai', 'ai', 'technology']}
-Score: 0.7991563081741333
-
-Name: Document 4
-Content: Artificial intelligence and machine learning are transforming industries.
-Meta Data: {'category': 'AI', 'tags': ['ai', 'machine learning', 'transformation']}
-Score: 0.7392491102218628
-
-Name: Document 5
-Content: OpenAI's ChatGPT is a language model for generating human-like text.
-Meta Data: {'category': 'AI', 'tags': ['openai', 'chatgpt', 'language model']}
-Score: 0.6569141149520874
-
-INFO:__main__:Performing keyword search with query: 'Python'
-INFO:__main__:Keyword search completed. Found 1 documents.
-
---- Keyword Search Results ---
-Name: Document 3
-Content: Python is a versatile programming language.
-Meta Data: {'category': 'Programming', 'tags': ['python', 'programming', 'language']}
-
-INFO:__main__:Performing hybrid search with vector query: 'Advancements in machine learning.' and keyword: 'transforming'
-INFO:httpx:HTTP Request: POST https://api.openai.com/v1/embeddings "HTTP/1.1 200 OK"
-INFO:__main__:Found existing index 'vector_search_index_1'.
-INFO:__main__:Hybrid search completed. Found 1 documents.
-
---- Hybrid Search Results ---
-Name: Document 4
-Content: Artificial intelligence and machine learning are transforming industries.
-Meta Data: {'category': 'AI', 'tags': ['ai', 'machine learning', 'transformation']}
-Score: 0.7872726321220398
-```
+*Happy Coding!*
