@@ -71,32 +71,6 @@ pip install mdb-toolkit
 
 *Requires Python 3.7 or higher.*
 
-## Setup
-
-1. **Clone the Repository**
-
-   ```bash
-   git clone git@github.com:ranfysvalle02/mdb_toolkit.git
-   cd mdb_toolkit
-   ```
-
-2. **Install Dependencies**
-
-   ```bash
-   pip install -e .
-   ```
-
-3. **Configure Environment Variables**
-
-   Create a `.env` file in the project root with the following content:
-
-   ```dotenv
-   MONGODB_URI=mongodb://localhost:27017/?directConnection=true
-   OPENAI_API_KEY=your_openai_api_key_here
-   ```
-
-   Replace `your_openai_api_key_here` with your actual OpenAI API key.
-
 ## Example Usage
 
 Here's a sample script demonstrating how to use `mdb_toolkit` to create a search index, insert documents, and perform various search operations.
