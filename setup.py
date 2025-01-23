@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="mdb-toolkit",  # Your package name (must be unique on PyPI)
-    version="0.5.0",  # Initial release version
+    version="0.6.0",  # Initial release version
     description="Custom MongoDB client with vector search capabilities, embeddings management, and more.",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",  # Use Markdown for PyPI description
