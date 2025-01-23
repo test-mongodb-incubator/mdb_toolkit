@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="mdb-toolkit",  # Your package name (must be unique on PyPI)
-    version="0.2.0",  # Initial release version
+    version="0.4.0",  # Initial release version
     description="Custom MongoDB client with vector search capabilities, embeddings management, and more.",
     long_description=open("README.md", "r", encoding="utf-8").read(),
     long_description_content_type="text/markdown",  # Use Markdown for PyPI description
@@ -10,11 +10,9 @@ setup(
     author_email="oblivio.company@gmail.com",  # Replace with your email
     license="MIT",  # Your project license
     url="https://github.com/ranfysvalle02/mdb_toolkit",  # GitHub repository URL
-    packages=find_packages(),  # Automatically find your packages
+    packages=['mdb_toolkit'],  # Automatically find your packages
     install_requires=[
         "pymongo",  # MongoDB driver
-        "python-dotenv",  # For environment variable management
-        "openai"  # For embedding generation
     ],
     python_requires=">=3.7",  # Specify the Python versions your package supports
     classifiers=[
