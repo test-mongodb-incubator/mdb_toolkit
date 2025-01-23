@@ -6,8 +6,6 @@
 
 MongoDB's flexibility and PyMongo's robust driver make it a popular choice for database management in Python applications. While PyMongo's `MongoClient` class provides rich functionality, there are scenarios where adding custom methods can simplify repetitive tasks or enhance the developer experience. 
 
-PymongoPlus elevates your MongoDB and PyMongo experience by reducing the amount of code you need to write, enhancing readability, and integrating advanced functionalities seamlessly. It's a testament to how customizing and extending existing tools can lead to significant productivity gains.  
-
 ---  
       
 ### **Why Customize MongoClient?**
