@@ -200,6 +200,7 @@ class CustomMongoClient(MongoClient):
         collection_name: str,
         index_name: str,
         distance_metric: str = "cosine",
+        embedding_field: str = "embedding"
     ) -> None:
         """
         Creates a search index on the specified collection if it does not already exist.
@@ -220,7 +221,7 @@ class CustomMongoClient(MongoClient):
                     "mappings": {
                         "dynamic": False,
                         "fields": {
-                            "embedding": {
+                            str(embedding_field): {
                                 "type": "knnVector",
                                 "dimensions": num_dimensions,
                                 "similarity": distance_metric,
@@ -381,6 +382,7 @@ class CustomMongoClient(MongoClient):
         database_name: str = "",
         collection_name: str = "",
         index_name: str = "",
+        embedding_field: str = "embedding",
         filters: Optional[Dict[str, Any]] = None,
     ) -> List[Dict]:
         """
@@ -413,11 +415,11 @@ class CustomMongoClient(MongoClient):
                         "limit": limit,
                         "numCandidates": limit,
                         "queryVector": query_embedding,
-                        "path": "embedding",
+                        "path": str(embedding_field),
                     }
                 },
                 {"$set": {"score": {"$meta": "vectorSearchScore"}}},
-                {"$project": {"embedding": 0}},
+                {"$project": {str(embedding_field): 0}},
             ]
             results = list(collection.aggregate(pipeline))
             logger.info(f"Vector search completed. Found {len(results)} documents.")
