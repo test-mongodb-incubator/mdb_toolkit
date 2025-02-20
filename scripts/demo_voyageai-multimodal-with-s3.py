@@ -2,6 +2,7 @@ import logging
 import openai
 from typing import List
 from MultiModalRetriever import MultiModalRetriever
+import voyageai
 
 # load .ENV file
 from dotenv import load_dotenv
@@ -12,7 +13,16 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 import voyageai
-voyageai_api_key = "pa-"
+voyageai_api_key = "<VOYAGEAI_API_KEY>"
+MODEL_NAME = "voyage-multimodal-3"
+vo = voyageai.Client(api_key=voyageai_api_key)
+
+# Setup S3
+import boto3
+access_key = '<AWS_ACCESS_KEY>'
+secret_key = '<AWS_SECRET_KEY>'
+session_token = '<AWS_SESSION_TOKEN>'
+s3_client = boto3.client('s3', aws_access_key_id=access_key, aws_secret_access_key=secret_key, aws_session_token=session_token)
 
 
 # Get Embedding Function
@@ -47,6 +57,7 @@ retriever = MultiModalRetriever(
     database_name=database_name,
     collection_name=collection_name,
     index_name=index_name,
+    s3_client=s3_client,
     bucket_name="test_bucket",
     voyage_api_key=voyageai_api_key
 )
@@ -78,7 +89,7 @@ else:
     print("Index creation process exceeded wait limit.")
     exit()
 
-pdfs = ["my_test.pdf", "my_test2.pdf", "my_test3.pdf"]
+pdfs = ["s3://multimodal-rag-test-jz/fdr-readingcopy.pdf"]
 
 
 # Insert documents into the collection
@@ -99,10 +110,4 @@ logger.info(f"Performing vector-based search with query: '{query}'")
 vector_results = retriever.mm_query(query, k=3)
 print("\n--- Vector-Based Search Results ---")
 for doc in vector_results:
-    print(doc)
-    #print(f"ID: {doc.get('_id')}\nContent: {doc.get('content')}\nMeta Data: {doc.get('meta_data')}\nScore: {doc.get('score')}\n")
-
-
-"""
-output TBD
-"""
+    print(f"ID: {doc.get('_id')}\nS3 Path: {doc.get('s3_full_path')}\nScore: {doc.get('score')}\n")
