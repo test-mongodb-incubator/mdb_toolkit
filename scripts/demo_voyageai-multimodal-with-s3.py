@@ -1,7 +1,6 @@
 import logging
-import openai
 from typing import List
-from MultiModalRetriever import MultiModalRetriever
+from mdb_toolkit.MultiModalRetriever import MultiModalRetriever
 import voyageai
 
 # load .ENV file
