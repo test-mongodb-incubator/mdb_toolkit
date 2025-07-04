@@ -1,6 +1,18 @@
-# mdb_toolkit
-
+# mdb_toolkit [![Project Status: Incubating](https://img.shields.io/badge/status-incubating-yellow)](https://example.com/incubation-policy)
 ![](https://github.com/ranfysvalle02/mdb_toolkit/raw/main/demo.png)
+
+<!-- MONGODB_OPENSOURCE_INCUBATION_DETAILS_BEGIN -->
+>[!NOTE]
+> **Project Status: `EXPERIMENTAL`**
+>
+> **What This Means**  
+> - **[Experimental]**: 🚧 Rapid iteration, breaking changes expected, minimal or no support.  
+> - **[Incubating]**: ⚠️ Gaining adoption, evolving APIs, contributions encouraged.  
+> - **[Supported]**: ✅ Stable and officially maintained with support commitments.  
+> - **[Retired]**: ❌ Project is no longer being maintained.
+> 
+> For details on our incubation process, see [our Open Source Incubation Guidelines](https://example.com/incubation-policy).  
+<!-- MONGODB_OPENSOURCE_INCUBATION_DETAILS_END -->
 
 # Less Code, More Power  
 
